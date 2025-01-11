@@ -1,71 +1,88 @@
-import {useState, useEffect} from 'react'
-import { useNavigate } from 'react-router-dom'
-import {collection, getDoc, query, orderBy, limit} from 'firebase/firestore'
-import {db} from '../firebase.config'
-import SwiperCore, {Navigation, Pagination, ScrollBar, A11y} from 'swiper'
-import {Swiper, SwiperSlide} from 'swiper/react'
-import 'swiper/swiper-bundle.css'
-import Spinner from './Spinner'
-SwiperCore.use([Navigation, Pagination, ScrollBar, A11y])
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { db } from '../firebase.config';
+
+// import 'swiper.min.css'; // Correct CSS import
+import SwiperCore, { Navigation, Pagination, Scrollbar, A11y } from 'swiper'; // Correct module imports
+import { Swiper, SwiperSlide } from 'swiper/react'; // Import Swiper and SwiperSlide
+
+import Spinner from './Spinner';
+
+// Initialize Swiper modules
+SwiperCore.use([Navigation, Pagination, Scrollbar, A11y]);
 
 function Slider() {
-  const [loading, setLoading] = useState(null)
-  const [listings, setListings] = useState(null)
-
-  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true);
+  const [listings, setListings] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchListings = async () => {
-      const listingsRef = collection(db, 'listings')
-      const q = query(listingsRef, orderBy('timestamp', 'desc'), limit(5))
-      const querySnap = await getDocs(q)
-  
-      let listings = []
-  
+      const listingsRef = collection(db, 'listings');
+      const q = query(listingsRef, orderBy('timestamp', 'desc'), limit(5));
+      const querySnap = await getDocs(q);
+
+      let listings = [];
+
       querySnap.forEach((doc) => {
-        return listings.push({
+        const data = doc.data();
+        listings.push({
           id: doc.id,
-          data: doc.data()
-        })
-      })
-      
-      setListings(listings)
-      setLoading(false)
-    }
+          data: {
+            ...data,
+            imgUrls: data.imgUrls || [], // Ensure imgUrls is an empty array if missing
+          },
+        });
+      });
 
-    fetchListings()
-  }, [])
+      setListings(listings);
+      setLoading(false);
+    };
 
-  if ( loading ) {
-    return <Spinner />
+    fetchListings();
+  }, []);
+
+  if (loading) {
+    return <Spinner />;
   }
 
   if (listings.length === 0) {
-    return <></>
+    return <></>;
   }
 
-  return listings && (
+  return (
     <>
-      <p className="exploreHeading">
-        Recommended
-      </p>
+      <p className="exploreHeading">Recommended</p>
 
-      <Swiper slidesPerView={1} pagination={{clickable: true}}>
-        {listings.map(({data, id}) => (
-          <SwiperSlide key={id} onClick={() => navigate(`/category/${data.type}/${id}`)}>
-            <div style={{background: `url(${data.imgUrls[0]}) center no-repeat`, backgroundSize: 'cover'}} className="swiperSlideDiv">
+      <Swiper slidesPerView={1} pagination={{ clickable: true }}>
+        {listings.map(({ data, id }) => (
+          <SwiperSlide
+            key={id}
+            onClick={() => navigate(`/category/${data.type}/${id}`)}
+          >
+            <div
+              style={{
+                background: `url(${
+                  data.imgUrls && data.imgUrls[0]
+                    ? data.imgUrls[0]
+                    : 'default-image.jpg'
+                }) center no-repeat`,
+                backgroundSize: 'cover',
+              }}
+              className="swiperSlideDiv"
+            >
               <p className="swiperSlideText">{data.name}</p>
               <p className="swiperSlidePrice">
-                ${data.discountedPrice ?? data.regularPrice}
-                {' '}{data.type === 'rent' && '/month'}
+                ${data.discountedPrice ?? data.regularPrice}{' '}
+                {data.type === 'rent' && '/ month'}
               </p>
-
             </div>
           </SwiperSlide>
         ))}
       </Swiper>
     </>
-  )
+  );
 }
 
-export default Slider
+export default Slider;
